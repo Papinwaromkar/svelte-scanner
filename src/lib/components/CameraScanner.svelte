@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import {
     Camera,
@@ -63,7 +63,7 @@
   let vibrationPattern = $state<VibrationPatternType>('standard');
   let reticleShape = $state<ReticleShapeType>('auto');
   let invertScanning = $state(false);
-  let cooldownIntervalMs = $state(continuousMode ? 1000 : 1800);
+  let cooldownIntervalMs = $derived(continuousMode ? 1000 : 1800);
   let isNativeDetector = $state(false);
 
   // Detected Barcode Polygon Corner Points Overlay

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 100% Client-Side TOTP (Time-Based One-Time Password) Generator (RFC 6238 / RFC 4226)
  * Uses native Web Crypto API (SubtleCrypto HMAC-SHA1) with zero external dependencies.
  */
@@ -37,9 +37,11 @@ export async function generateTOTP(secret: string, period = 30, digits = 6): Pro
       return { code: '------', secondsRemaining };
     }
 
+    // Ensure the buffer is a plain ArrayBuffer (not SharedArrayBuffer) for Web Crypto API
+    const keyBuffer = keyData.buffer.slice(keyData.byteOffset, keyData.byteOffset + keyData.byteLength) as ArrayBuffer;
     const key = await crypto.subtle.importKey(
       'raw',
-      keyData,
+      keyBuffer,
       { name: 'HMAC', hash: { name: 'SHA-1' } },
       false,
       ['sign']
