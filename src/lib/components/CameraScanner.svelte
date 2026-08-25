@@ -35,6 +35,9 @@
 
   let { onScan, continuousMode = false }: Props = $props();
 
+  // Post-scan state — camera stops after a successful scan
+  let lastScannedRecord = $state<ScanRecord | null>(null);
+
   let videoElement: HTMLVideoElement | null = $state(null);
   let canvasElement: HTMLCanvasElement | null = $state(null);
   let containerElement: HTMLDivElement | null = $state(null);
@@ -318,10 +321,15 @@
     }
   }
 
-  function togglePause() {
-    isPaused = !isPaused;
-    if (!isPaused) {
-      runScanLoop();
+  async function togglePause() {
+    if (isPaused) {
+      // Resume — restart the camera and scan loop
+      isPaused = false;
+      await startCamera();
+    } else {
+      // Pause — stop the camera to free the hardware
+      isPaused = true;
+      stopCamera();
     }
   }
 
@@ -378,6 +386,14 @@
           });
 
           onScan(record);
+
+          if (!continuousMode) {
+            // Stop camera and show post-scan options
+            lastScannedRecord = record;
+            stopCamera();
+            isScanning = false;
+            return;
+          }
         }
       }
     } catch {
@@ -389,6 +405,23 @@
     if (isScanning && !isPaused && generation === scanLoopGeneration) {
       animationFrameId = requestAnimationFrame(runScanLoop);
     }
+  }
+
+  /** Restart scanning the same subject (keeps last scanned text for cooldown reset). */
+  async function rescan() {
+    lastScannedRecord = null;
+    lastScannedText = '';
+    lastScannedTimestamp = 0;
+    await startCamera();
+  }
+
+  /** Start a brand-new scan session (fully fresh). */
+  async function startNewScan() {
+    lastScannedRecord = null;
+    lastScannedText = '';
+    lastScannedTimestamp = 0;
+    selectedDeviceId = selectedDeviceId; // keep chosen camera
+    await startCamera();
   }
 </script>
 
@@ -446,11 +479,11 @@
     {/if}
 
     <!-- Live Scanner Reticle -->
-    {#if !cameraError && !isPaused}
+    {#if !cameraError && !isPaused && !lastScannedRecord}
       <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
         {#if reticleShape === 'square' || (reticleShape === 'auto')}
           <!-- Square Reticle for 2D QR Codes -->
-          <div class="relative w-60 h-60 sm:w-72 sm:h-72 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden">
+          <div class="relative w-60 h-60 sm:w-72 sm:h-72 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden" style="--reticle-h: 240px">
             <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_12px_#ff6c2e] animate-scan-laser"></div>
             <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
             <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
@@ -459,7 +492,7 @@
           </div>
         {:else if reticleShape === 'wide'}
           <!-- Wide 16:9 Reticle for 1D Linear Barcodes -->
-          <div class="relative w-72 h-36 sm:w-96 sm:h-44 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden">
+          <div class="relative w-72 h-36 sm:w-96 sm:h-44 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden" style="--reticle-h: 144px">
             <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_12px_#ff6c2e] animate-scan-laser"></div>
             <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
             <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
@@ -480,11 +513,43 @@
       </div>
     {/if}
 
+    <!-- Post-Scan Success Overlay -->
+    {#if lastScannedRecord && !isScanning}
+      <div class="absolute inset-0 z-25 flex flex-col items-center justify-center gap-5 bg-black/80 backdrop-blur-sm">
+        <div class="flex flex-col items-center gap-3 text-center px-6">
+          <div class="w-14 h-14 rounded-full bg-status-online/20 border-2 border-status-online flex items-center justify-center">
+            <CheckCircle2 class="w-7 h-7 text-status-online" />
+          </div>
+          <div>
+            <p class="text-white font-semibold text-sm">Scan Successful</p>
+            <p class="text-white/50 text-xs mt-0.5 font-mono truncate max-w-[240px]">{lastScannedRecord.rawText}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button
+            onclick={rescan}
+            class="px-5 py-2.5 rounded-none bg-surface border border-border text-foreground hover:bg-border text-xs font-semibold flex items-center gap-2 transition-colors shadow-lg"
+          >
+            <RefreshCw class="w-4 h-4" />
+            Rescan
+          </button>
+          <button
+            onclick={startNewScan}
+            class="px-5 py-2.5 rounded-none bg-primary hover:bg-primary/90 text-white text-xs font-semibold flex items-center gap-2 transition-colors shadow-lg"
+          >
+            <Camera class="w-4 h-4" />
+            Scan Another
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <!-- Top Viewport Floating HUD -->
     <div class="absolute top-3 inset-x-3 flex items-center justify-between z-20 pointer-events-none">
       <div class="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/20 text-xs text-white/80 pointer-events-auto">
-        <span class="w-2 h-2 rounded-none {isPaused ? 'bg-amber-400' : 'bg-status-online animate-pulse'}"></span>
-        <span class="font-medium">{isPaused ? 'Paused' : '60 FPS Active'}</span>
+        <span class="w-2 h-2 rounded-none {lastScannedRecord && !isScanning ? 'bg-status-online' : isPaused ? 'bg-amber-400' : 'bg-status-online animate-pulse'}"></span>
+        <span class="font-medium">{lastScannedRecord && !isScanning ? 'Scan Complete' : isPaused ? 'Paused' : '60 FPS Active'}</span>
       </div>
 
       <!-- Quick Action Floating Buttons -->
@@ -683,20 +748,21 @@
 <style>
   @keyframes scanLaser {
     0% {
-      top: 0%;
+      transform: translateY(0%);
       opacity: 0.8;
     }
     50% {
-      top: 100%;
+      transform: translateY(var(--reticle-h, 240px));
       opacity: 1;
     }
     100% {
-      top: 0%;
+      transform: translateY(0%);
       opacity: 0.8;
     }
   }
 
   .animate-scan-laser {
+    will-change: transform, opacity;
     animation: scanLaser 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 </style>
