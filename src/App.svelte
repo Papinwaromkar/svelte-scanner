@@ -6,8 +6,7 @@
     QrCode,
     History,
     Sparkles,
-    ShieldCheck,
-    Info
+    ShieldCheck
   } from '@lucide/svelte';
   import CameraScanner from './lib/components/CameraScanner.svelte';
   import ImageScanner from './lib/components/ImageScanner.svelte';
@@ -40,47 +39,48 @@
     generatorInitialText = text;
     activeTab = 'generate';
   }
+
+  function tabClass(tab: TabType) {
+    return activeTab === tab
+      ? 'border-[#161616] text-[#161616]'
+      : 'border-[#C6C6C6] text-[#525252] hover:text-[#161616]';
+  }
 </script>
 
-<div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
+<div class="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-foreground">
   <!-- Top Navigation Header -->
-  <header class="sticky top-0 z-40 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/80 px-4 sm:px-8 py-3.5">
+  <header class="sticky top-0 z-40 bg-surface border-b border-border px-4 sm:px-8 py-3.5">
     <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
       <!-- App Brand -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 p-0.5 shadow-lg shadow-cyan-500/20">
-          <div class="w-full h-full bg-gray-950 rounded-[14px] flex items-center justify-center text-cyan-400">
-            <QrCode class="w-5 h-5" />
-          </div>
+        <div class="w-10 h-10 rounded-none bg-primary flex items-center justify-center text-white">
+          <QrCode class="w-5 h-5" />
         </div>
         <div>
-          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-base sm:text-lg font-heading font-bold tracking-tight text-foreground flex items-center gap-2">
             <span>ScanCraft</span>
-            <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 hidden sm:inline-block">
+            <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-none bg-primary/10 text-primary border border-primary/30 hidden sm:inline-block">
               100% Client-Side
             </span>
           </h1>
-          <p class="text-[11px] text-gray-400 hidden sm:block">Universal Barcode & QR Code Engine</p>
+          <p class="text-[11px] text-muted-foreground hidden sm:block">Universal Barcode & QR Code Engine</p>
         </div>
       </div>
 
       <!-- Offline & Privacy Indicator -->
-      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 border border-gray-800 text-xs text-gray-300">
-        <ShieldCheck class="w-3.5 h-3.5 text-emerald-400" />
+      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-none bg-[#F3F4F6] border border-border text-xs text-muted-foreground">
+        <ShieldCheck class="w-3.5 h-3.5 text-status-online" />
         <span class="font-medium text-[11px]">Private & Offline Ready</span>
       </div>
     </div>
   </header>
 
   <!-- Navigation Tab Bar -->
-  <nav class="bg-gray-950 border-b border-gray-850 px-4 overflow-x-auto py-2">
-    <div class="max-w-4xl mx-auto flex items-center justify-start sm:justify-center gap-1.5 min-w-max">
+  <nav class="bg-surface border-b border-border px-4 overflow-x-auto">
+    <div class="max-w-4xl mx-auto flex items-center justify-start sm:justify-center gap-0 min-w-max">
       <button
         onclick={() => (activeTab = 'camera')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'camera'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('camera')}"
       >
         <Camera class="w-4 h-4" />
         <span>Live Camera</span>
@@ -88,10 +88,7 @@
 
       <button
         onclick={() => (activeTab = 'upload')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'upload'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('upload')}"
       >
         <Upload class="w-4 h-4" />
         <span>Upload & Paste</span>
@@ -99,10 +96,7 @@
 
       <button
         onclick={() => (activeTab = 'batch')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'batch'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('batch')}"
       >
         <Boxes class="w-4 h-4" />
         <span>Batch Inventory</span>
@@ -110,10 +104,7 @@
 
       <button
         onclick={() => (activeTab = 'generate')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'generate'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('generate')}"
       >
         <QrCode class="w-4 h-4" />
         <span>Generator</span>
@@ -121,10 +112,7 @@
 
       <button
         onclick={() => (activeTab = 'history')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'history'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('history')}"
       >
         <History class="w-4 h-4" />
         <span>Scan History</span>
@@ -132,12 +120,9 @@
 
       <button
         onclick={() => (activeTab = 'guide')}
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all {activeTab ===
-        'guide'
-          ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
-          : 'text-gray-400 hover:text-white hover:bg-gray-900'}"
+        class="px-3.5 py-2.5 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors {tabClass('guide')}"
       >
-        <Sparkles class="w-4 h-4 text-cyan-400" />
+        <Sparkles class="w-4 h-4" />
         <span>Tech Specs</span>
       </button>
     </div>
@@ -180,7 +165,7 @@
   />
 
   <!-- Footer -->
-  <footer class="mt-auto border-t border-gray-900 py-4 px-6 text-center text-xs text-gray-400">
+  <footer class="mt-auto border-t border-border py-4 px-6 text-center text-xs text-muted-foreground">
     <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
       <span>Built with Svelte 5 + TypeScript + Vite • 100% Client-Side Web Application</span>
       <span>No data or video is ever transmitted to a server</span>

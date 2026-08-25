@@ -21,7 +21,7 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes('@zxing')) return 'vendor-zxing';
           if (id.includes('qrcode') || id.includes('jsbarcode')) return 'vendor-qr';
-          if (id.includes('@lucide') || id.includes('canvas-confetti')) return 'vendor-ui';
+          if (id.includes('@lucide')) return 'vendor-ui';
         }
       }
     }

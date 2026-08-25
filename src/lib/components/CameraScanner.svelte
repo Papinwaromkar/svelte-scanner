@@ -22,7 +22,6 @@
     Square,
     RectangleHorizontal
   } from '@lucide/svelte';
-  import confetti from 'canvas-confetti';
   import { scannerEngine } from '../services/scanner';
   import { parseBarcodeContent } from '../services/parser';
   import { audioManager } from '../services/audio';
@@ -74,15 +73,19 @@
   let lastScannedText = $state('');
   let lastScannedTimestamp = $state(0);
   let animationFrameId: number | null = null;
+  let scanLoopGeneration = 0;
+  let scanInFlight = false;
 
   // Touch gesture pinch-to-zoom tracking
   let touchStartDistance = 0;
   let zoomStartLevel = 1;
 
   onMount(async () => {
+    await scannerEngine.ready();
     isNativeDetector = scannerEngine.isNativeSupported();
-    await loadCameraDevices();
+    // Open camera first (grants permission), then refresh device list with real labels.
     await startCamera();
+    await loadCameraDevices();
   });
 
   onDestroy(() => {
@@ -90,29 +93,83 @@
     if (clearBoxTimer) clearTimeout(clearBoxTimer);
   });
 
+  function isUnusableCameraLabel(label: string): boolean {
+    return /ir\b|infrared|windows hello|virtual|obs|manycam|snap\s*camera|droidcam|nvidia broadcast/i.test(
+      label
+    );
+  }
+
+  function pickDefaultDeviceId(videoDevs: CameraDevice[]): string {
+    const usable = videoDevs.filter((d) => !isUnusableCameraLabel(d.label));
+    const pool = usable.length > 0 ? usable : videoDevs;
+    const backCamera = pool.find((d) => d.facing === 'environment');
+    return (backCamera ?? pool[0])?.deviceId ?? '';
+  }
+
   async function loadCameraDevices() {
     try {
       if (!navigator.mediaDevices?.enumerateDevices) return;
       const allDevices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevs = allDevices.filter((d) => d.kind === 'videoinput');
+      const videoDevs = allDevices.filter((d) => d.kind === 'videoinput' && d.deviceId);
 
       devices = videoDevs.map((d, index) => {
         const label = d.label || `Camera ${index + 1}`;
         const isBack = /back|rear|environment/i.test(label);
         return {
           deviceId: d.deviceId,
-          label: label,
-          facing: isBack ? 'environment' : 'user'
+          label,
+          facing: isBack ? ('environment' as const) : ('user' as const)
         };
       });
 
-      if (devices.length > 0 && !selectedDeviceId) {
-        const backCamera = devices.find((d) => d.facing === 'environment');
-        selectedDeviceId = backCamera ? backCamera.deviceId : devices[0].deviceId;
+      if (devices.length === 0) return;
+
+      const stillSelected = devices.some((d) => d.deviceId === selectedDeviceId);
+      if (!selectedDeviceId || !stillSelected || isUnusableCameraLabel(
+        devices.find((d) => d.deviceId === selectedDeviceId)?.label ?? ''
+      )) {
+        selectedDeviceId = pickDefaultDeviceId(devices);
       }
     } catch {
       // Permission not yet granted
     }
+  }
+
+  async function requestCameraStream(): Promise<MediaStream> {
+    const attempts: MediaStreamConstraints[] = [];
+
+    if (selectedDeviceId) {
+      attempts.push({
+        video: {
+          deviceId: { ideal: selectedDeviceId },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+    }
+
+    attempts.push({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+
+    // Last resort — any camera the OS will give us (helps laptop webcams / Windows Hello IR filters)
+    attempts.push({ video: true, audio: false });
+
+    let lastError: unknown;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError;
   }
 
   async function startCamera() {
@@ -121,26 +178,26 @@
     isHttpsWarning = false;
     isPaused = false;
 
-    if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (
+      typeof window !== 'undefined' &&
+      !window.isSecureContext &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1'
+    ) {
       isHttpsWarning = true;
-      cameraError = 'Mobile browsers strictly require an HTTPS connection to access the device camera.';
+      cameraError =
+        'Browsers require a secure context (HTTPS or localhost) to access the device camera.';
       return;
     }
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cameraError = 'Camera API is not supported on this browser or connection. Ensure HTTPS is enabled.';
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraError =
+        'Camera API is not supported on this browser or connection. Ensure HTTPS is enabled.';
       return;
     }
 
     try {
-      const constraints: MediaStreamConstraints = {
-        video: selectedDeviceId
-          ? { deviceId: { exact: selectedDeviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false
-      };
-
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream = await requestCameraStream();
 
       if (videoElement) {
         videoElement.srcObject = stream;
@@ -149,19 +206,20 @@
 
       const track = stream.getVideoTracks()[0];
       if (track) {
-        const capabilities: any = track.getCapabilities ? track.getCapabilities() : {};
-        if (capabilities.torch) {
-          hasTorch = true;
-        } else {
-          hasTorch = false;
+        const settings = track.getSettings?.() ?? {};
+        if (settings.deviceId) {
+          selectedDeviceId = settings.deviceId;
         }
+
+        const capabilities: any = track.getCapabilities ? track.getCapabilities() : {};
+        hasTorch = Boolean(capabilities.torch);
 
         if (capabilities.zoom) {
           hasZoom = true;
           minZoom = capabilities.zoom.min || 1;
           maxZoom = capabilities.zoom.max || 5;
           zoomStep = capabilities.zoom.step || 0.1;
-          currentZoom = track.getSettings ? (track.getSettings() as any).zoom || minZoom : minZoom;
+          currentZoom = (settings as { zoom?: number }).zoom || minZoom;
         } else {
           hasZoom = false;
         }
@@ -173,15 +231,21 @@
     } catch (err: any) {
       console.error('Camera access error:', err);
       cameraError =
-        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+        err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
           ? 'Camera permission was denied. Please allow camera access in browser permissions.'
-          : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
+          : err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError'
             ? 'No camera was found on this device.'
-            : 'Unable to access camera. Please check camera settings.';
+            : err?.name === 'NotReadableError' || err?.name === 'TrackStartError'
+              ? 'Camera is busy or unreadable (another app may be using it, or an IR/virtual camera was selected). Try another camera from the list.'
+              : err?.name === 'OverconstrainedError'
+                ? 'No camera matched the requested settings. Try another camera from the list.'
+                : 'Unable to access camera. Please check camera settings.';
     }
   }
 
   function stopCamera() {
+    scanLoopGeneration += 1;
+    scanInFlight = false;
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
@@ -262,19 +326,36 @@
   }
 
   async function runScanLoop() {
+    const generation = scanLoopGeneration;
+
     if (!isScanning || isPaused || !videoElement || videoElement.readyState < 2) {
-      if (isScanning && !isPaused) {
+      if (isScanning && !isPaused && generation === scanLoopGeneration) {
         animationFrameId = requestAnimationFrame(runScanLoop);
       }
       return;
     }
 
+    if (scanInFlight) {
+      if (generation === scanLoopGeneration) {
+        animationFrameId = requestAnimationFrame(runScanLoop);
+      }
+      return;
+    }
+
+    scanInFlight = true;
     try {
-      const result = await scannerEngine.scanFrame(videoElement, canvasElement || undefined, invertScanning);
+      const result = await scannerEngine.scanFrame(
+        videoElement,
+        canvasElement || undefined,
+        invertScanning
+      );
+
+      if (generation !== scanLoopGeneration) return;
 
       if (result && result.text) {
         const now = Date.now();
-        const isDuplicate = result.text === lastScannedText && now - lastScannedTimestamp < cooldownIntervalMs;
+        const isDuplicate =
+          result.text === lastScannedText && now - lastScannedTimestamp < cooldownIntervalMs;
 
         if (result.cornerPoints && videoElement) {
           cornerPoints = result.cornerPoints;
@@ -289,13 +370,6 @@
           audioManager.playSound(soundProfile);
           audioManager.vibratePattern(vibrationPattern);
 
-          confetti({
-            particleCount: 35,
-            spread: 60,
-            origin: { y: 0.75 },
-            colors: ['#06b6d4', '#10b981', '#6366f1']
-          });
-
           const parsed = parseBarcodeContent(result.text, result.format);
           const record = historyService.addOrIncrement({
             rawText: result.text,
@@ -308,9 +382,11 @@
       }
     } catch {
       // Ignore scan frame loop errors
+    } finally {
+      scanInFlight = false;
     }
 
-    if (isScanning && !isPaused) {
+    if (isScanning && !isPaused && generation === scanLoopGeneration) {
       animationFrameId = requestAnimationFrame(runScanLoop);
     }
   }
@@ -318,9 +394,7 @@
 
 <div
   bind:this={containerElement}
-  class="relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden bg-gray-950 border border-gray-800 shadow-2xl {isFullscreen
-    ? 'fixed inset-0 z-50 max-w-none rounded-none'
-    : ''}"
+  class="relative w-full max-w-3xl mx-auto rounded-none overflow-hidden bg-background border border-border shadow-2xl {isFullscreen ? 'fixed inset-0 z-50 max-w-none rounded-none' : ''}"
 >
   <canvas bind:this={canvasElement} class="hidden"></canvas>
 
@@ -330,9 +404,7 @@
     aria-label="Camera scanner viewport"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
-    class="relative w-full bg-black flex items-center justify-center overflow-hidden {isFullscreen
-      ? 'h-screen'
-      : 'aspect-[4/3] sm:aspect-[16/10]'}"
+    class="relative w-full bg-black flex items-center justify-center overflow-hidden {isFullscreen ? 'h-screen' : 'aspect-[4/3] sm:aspect-[16/10]'}"
   >
     <video
       bind:this={videoElement}
@@ -344,8 +416,8 @@
 
     <!-- Error State Overlay -->
     {#if cameraError}
-      <div class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center bg-gray-950/95 backdrop-blur-md">
-        <div class="p-4 rounded-2xl {isHttpsWarning ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'} mb-3">
+      <div class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center bg-black/90 backdrop-blur-md">
+        <div class="p-4 rounded-none {isHttpsWarning ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-status-error-bg text-status-error border border-status-error/20'} mb-3">
           {#if isHttpsWarning}
             <ShieldAlert class="w-8 h-8" />
           {:else}
@@ -353,19 +425,19 @@
           {/if}
         </div>
         <h3 class="text-lg font-bold text-white mb-2">{isHttpsWarning ? 'HTTPS Required for Mobile Devices' : 'Camera Access Required'}</h3>
-        <p class="text-xs sm:text-sm text-gray-400 max-w-md mb-5 leading-relaxed">{cameraError}</p>
+        <p class="text-xs sm:text-sm text-white/70 max-w-md mb-5 leading-relaxed">{cameraError}</p>
 
         {#if isHttpsWarning}
-          <div class="p-3.5 rounded-2xl bg-gray-900 border border-gray-800 text-xs text-gray-300 max-w-md mb-4 text-left space-y-1.5 font-mono">
-            <div>1. Vite server is configured with <span class="text-cyan-400">@vitejs/plugin-basic-ssl</span>.</div>
-            <div>2. Open URL on your phone using <span class="text-emerald-400 font-bold">https://</span> (not http).</div>
+          <div class="p-3.5 rounded-none bg-surface border border-border text-xs text-muted-foreground max-w-md mb-4 text-left space-y-1.5 font-mono">
+            <div>1. Vite server is configured with <span class="text-primary">@vitejs/plugin-basic-ssl</span>.</div>
+            <div>2. Open URL on your phone using <span class="text-status-online font-bold">https://</span> (not http).</div>
             <div>3. Accept the self-signed certificate warning once.</div>
           </div>
         {/if}
 
         <button
           onclick={startCamera}
-          class="px-5 py-2.5 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30"
+          class="px-5 py-2.5 rounded-none bg-primary hover:bg-primary/90 text-white font-medium text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg "
         >
           <RefreshCw class="w-4 h-4" />
           <span>Retry Camera Access</span>
@@ -378,21 +450,21 @@
       <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
         {#if reticleShape === 'square' || (reticleShape === 'auto')}
           <!-- Square Reticle for 2D QR Codes -->
-          <div class="relative w-60 h-60 sm:w-72 sm:h-72 rounded-2xl border-2 border-cyan-400/40 shadow-[0_0_50px_rgba(6,182,212,0.15)] overflow-hidden">
-            <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#06b6d4] animate-scan-laser"></div>
-            <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-cyan-400 rounded-tl-lg"></div>
-            <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-cyan-400 rounded-tr-lg"></div>
-            <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-cyan-400 rounded-bl-lg"></div>
-            <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-cyan-400 rounded-br-lg"></div>
+          <div class="relative w-60 h-60 sm:w-72 sm:h-72 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden">
+            <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_12px_#ff6c2e] animate-scan-laser"></div>
+            <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+            <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+            <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+            <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
           </div>
         {:else if reticleShape === 'wide'}
           <!-- Wide 16:9 Reticle for 1D Linear Barcodes -->
-          <div class="relative w-72 h-36 sm:w-96 sm:h-44 rounded-2xl border-2 border-cyan-400/40 shadow-[0_0_50px_rgba(6,182,212,0.15)] overflow-hidden">
-            <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#06b6d4] animate-scan-laser"></div>
-            <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-cyan-400 rounded-tl-lg"></div>
-            <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-cyan-400 rounded-tr-lg"></div>
-            <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-cyan-400 rounded-bl-lg"></div>
-            <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-cyan-400 rounded-br-lg"></div>
+          <div class="relative w-72 h-36 sm:w-96 sm:h-44 rounded-none border-2 border-primary/40 shadow-[0_0_50px_rgba(255,108,46,0.2)] overflow-hidden">
+            <div class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_12px_#ff6c2e] animate-scan-laser"></div>
+            <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+            <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+            <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+            <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
           </div>
         {/if}
       </div>
@@ -401,7 +473,7 @@
     <!-- Paused State Badge -->
     {#if isPaused}
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-black/40 pointer-events-none">
-        <div class="px-4 py-2 rounded-2xl bg-gray-900/90 border border-gray-700 text-white text-xs font-medium flex items-center gap-2 shadow-xl backdrop-blur-sm">
+        <div class="px-4 py-2 rounded-none bg-surface border border-border text-foreground text-xs font-medium flex items-center gap-2 shadow-xl backdrop-blur-sm">
           <Pause class="w-4 h-4 text-amber-400" />
           <span>Scanner Paused</span>
         </div>
@@ -410,17 +482,17 @@
 
     <!-- Top Viewport Floating HUD -->
     <div class="absolute top-3 inset-x-3 flex items-center justify-between z-20 pointer-events-none">
-      <div class="flex items-center gap-2 bg-gray-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-gray-800 text-xs text-gray-300 pointer-events-auto">
-        <span class="w-2 h-2 rounded-full {isPaused ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}"></span>
+      <div class="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/20 text-xs text-white/80 pointer-events-auto">
+        <span class="w-2 h-2 rounded-none {isPaused ? 'bg-amber-400' : 'bg-status-online animate-pulse'}"></span>
         <span class="font-medium">{isPaused ? 'Paused' : '60 FPS Active'}</span>
       </div>
 
       <!-- Quick Action Floating Buttons -->
-      <div class="flex items-center gap-1.5 pointer-events-auto bg-gray-950/80 backdrop-blur-md p-1 rounded-2xl border border-gray-800">
+      <div class="flex items-center gap-1.5 pointer-events-auto bg-black/70 backdrop-blur-md p-1 rounded-none border border-white/20">
         {#if hasTorch}
           <button
             onclick={toggleTorch}
-            class="p-2 rounded-xl transition-colors {torchActive ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
+            class="p-2 rounded-none transition-colors {torchActive ? 'bg-amber-500 text-black' : 'text-white/70 hover:text-white hover:bg-white/10'}"
             title={torchActive ? 'Turn off flashlight' : 'Turn on flashlight'}
           >
             {#if torchActive}
@@ -433,7 +505,7 @@
 
         <button
           onclick={() => (invertScanning = !invertScanning)}
-          class="p-2 rounded-xl transition-colors {invertScanning ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
+          class="p-2 rounded-none transition-colors {invertScanning ? 'bg-primary text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}"
           title="Invert QR Colors (White on Black)"
         >
           <Sparkles class="w-4 h-4" />
@@ -441,7 +513,7 @@
 
         <button
           onclick={toggleFullscreen}
-          class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          class="p-2 rounded-none text-white/70 hover:text-white hover:bg-white/10 transition-colors"
           title="Toggle Fullscreen Mode"
         >
           {#if isFullscreen}
@@ -453,11 +525,11 @@
 
         <button
           onclick={togglePause}
-          class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          class="p-2 rounded-none text-white/70 hover:text-white hover:bg-white/10 transition-colors"
           title={isPaused ? 'Resume camera scanning' : 'Pause scanning'}
         >
           {#if isPaused}
-            <Play class="w-4 h-4 text-emerald-400" />
+            <Play class="w-4 h-4 text-status-online" />
           {:else}
             <Pause class="w-4 h-4" />
           {/if}
@@ -468,17 +540,17 @@
     <!-- Floating Zoom Pills on bottom of video (if supported) -->
     {#if hasZoom}
       <div class="absolute bottom-3 inset-x-3 flex items-center justify-center gap-2 z-20 pointer-events-none">
-        <div class="flex items-center gap-1 bg-gray-950/80 backdrop-blur-md p-1 rounded-2xl border border-gray-800 pointer-events-auto shadow-lg">
+        <div class="flex items-center gap-1 bg-black/70 backdrop-blur-md p-1 rounded-none border border-white/20 pointer-events-auto shadow-lg">
           <button
             onclick={() => setZoom(1)}
-            class="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 1) < 0.2 ? 'bg-cyan-500 text-black' : 'text-gray-300 hover:bg-gray-800'}"
+            class="px-2.5 py-1 rounded-none text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 1) < 0.2 ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/10'}"
           >
             1x
           </button>
           {#if maxZoom >= 2}
             <button
               onclick={() => setZoom(2)}
-              class="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 2) < 0.2 ? 'bg-cyan-500 text-black' : 'text-gray-300 hover:bg-gray-800'}"
+              class="px-2.5 py-1 rounded-none text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 2) < 0.2 ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/10'}"
             >
               2x
             </button>
@@ -486,7 +558,7 @@
           {#if maxZoom >= 3}
             <button
               onclick={() => setZoom(3)}
-              class="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 3) < 0.2 ? 'bg-cyan-500 text-black' : 'text-gray-300 hover:bg-gray-800'}"
+              class="px-2.5 py-1 rounded-none text-[11px] font-mono font-bold transition-colors {Math.abs(currentZoom - 3) < 0.2 ? 'bg-primary text-white' : 'text-white/70 hover:bg-white/10'}"
             >
               3x
             </button>
@@ -497,22 +569,22 @@
   </div>
 
   <!-- Bottom Hardware & Settings Control Panel -->
-  <div class="p-5 bg-gray-900 border-t border-gray-800 space-y-4">
+  <div class="p-5 bg-surface border-t border-border space-y-4">
     <!-- Camera device selection & Reticle shape selector -->
     <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
       <div class="sm:col-span-7">
-        <label for="camera-select-prod" class="block text-xs font-medium text-gray-400 mb-1">Camera Lens Source</label>
+        <label for="camera-select-prod" class="block text-xs font-medium text-muted-foreground mb-1">Camera Lens Source</label>
         <div class="flex items-center gap-2">
           <select
             id="camera-select-prod"
             bind:value={selectedDeviceId}
             onchange={startCamera}
-            class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500/50"
+            class="w-full bg-background border border-border rounded-none px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/50"
           >
             {#if devices.length === 0}
               <option value="">Default / Environment Camera</option>
             {:else}
-              {#each devices as dev}
+              {#each devices as dev (dev.deviceId)}
                 <option value={dev.deviceId}>{dev.label}</option>
               {/each}
             {/if}
@@ -520,7 +592,7 @@
 
           <button
             onclick={startCamera}
-            class="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors shrink-0"
+            class="p-2 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground border border-border transition-colors shrink-0"
             title="Reload camera stream"
           >
             <RefreshCw class="w-4 h-4" />
@@ -530,11 +602,11 @@
 
       <!-- Reticle Framing Selector -->
       <div class="sm:col-span-5">
-        <span class="block text-xs font-medium text-gray-400 mb-1">Framing Target</span>
-        <div class="flex items-center p-1 bg-gray-950 border border-gray-800 rounded-xl">
+        <span class="block text-xs font-medium text-muted-foreground mb-1">Framing Target</span>
+        <div class="flex items-center p-1 bg-background border border-border rounded-none">
           <button
             onclick={() => (reticleShape = 'square')}
-            class="flex-1 py-1 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors {reticleShape === 'square' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-white'}"
+            class="flex-1 py-1 px-2 rounded-none text-xs font-medium flex items-center justify-center gap-1 transition-colors {reticleShape === 'square' ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground'}"
             title="Square framing (2D QR Code)"
           >
             <Square class="w-3.5 h-3.5" />
@@ -543,7 +615,7 @@
 
           <button
             onclick={() => (reticleShape = 'wide')}
-            class="flex-1 py-1 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors {reticleShape === 'wide' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-white'}"
+            class="flex-1 py-1 px-2 rounded-none text-xs font-medium flex items-center justify-center gap-1 transition-colors {reticleShape === 'wide' ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground'}"
             title="Wide framing (1D Linear Barcode)"
           >
             <RectangleHorizontal class="w-3.5 h-3.5" />
@@ -555,8 +627,8 @@
 
     <!-- Fine Zoom Slider (if hardware supported) -->
     {#if hasZoom}
-      <div class="flex items-center gap-3 pt-1 border-t border-gray-800/80">
-        <ZoomIn class="w-4 h-4 text-gray-400 shrink-0" />
+      <div class="flex items-center gap-3 pt-1 border-t border-border">
+        <ZoomIn class="w-4 h-4 text-muted-foreground shrink-0" />
         <input
           type="range"
           min={minZoom}
@@ -564,21 +636,21 @@
           step={zoomStep}
           value={currentZoom}
           oninput={(e) => setZoom(parseFloat((e.target as HTMLInputElement).value))}
-          class="w-full accent-cyan-500 h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+          class="w-full accent-primary h-1.5 bg-[#F3F4F6] rounded-none appearance-none cursor-pointer"
         />
-        <span class="text-xs font-mono text-cyan-400 w-12 text-right">{currentZoom.toFixed(1)}x</span>
+        <span class="text-xs font-mono text-primary w-12 text-right">{currentZoom.toFixed(1)}x</span>
       </div>
     {/if}
 
     <!-- Audio Profile & Vibration controls -->
-    <div class="pt-2 border-t border-gray-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="pt-2 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs">
       <div class="flex items-center gap-2">
-        <Volume2 class="w-3.5 h-3.5 text-gray-400" />
-        <label for="sound-profile-select" class="text-gray-400">Beep Audio:</label>
+        <Volume2 class="w-3.5 h-3.5 text-muted-foreground" />
+        <label for="sound-profile-select" class="text-muted-foreground">Beep Audio:</label>
         <select
           id="sound-profile-select"
           bind:value={soundProfile}
-          class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-gray-300 text-xs focus:outline-none"
+          class="bg-background border border-border rounded-none px-2 py-1 text-muted-foreground text-xs focus:outline-none"
         >
           <option value="pos_beep">Classic POS Beep</option>
           <option value="modern_chime">Modern Chime</option>
@@ -590,12 +662,12 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <Vibrate class="w-3.5 h-3.5 text-gray-400" />
-        <label for="vibrate-pattern-select" class="text-gray-400">Haptic Buzz:</label>
+        <Vibrate class="w-3.5 h-3.5 text-muted-foreground" />
+        <label for="vibrate-pattern-select" class="text-muted-foreground">Haptic Buzz:</label>
         <select
           id="vibrate-pattern-select"
           bind:value={vibrationPattern}
-          class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-gray-300 text-xs focus:outline-none"
+          class="bg-background border border-border rounded-none px-2 py-1 text-muted-foreground text-xs focus:outline-none"
         >
           <option value="crisp">Crisp (35ms)</option>
           <option value="standard">Standard (75ms)</option>

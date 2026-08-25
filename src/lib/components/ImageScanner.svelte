@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import {
     Upload,
@@ -12,7 +12,6 @@
     CheckCircle2,
     ArrowRight
   } from '@lucide/svelte';
-  import confetti from 'canvas-confetti';
   import { scannerEngine } from '../services/scanner';
   import { parseBarcodeContent } from '../services/parser';
   import { audioManager } from '../services/audio';
@@ -112,12 +111,6 @@
         audioManager.playSound('pos_beep');
         audioManager.vibratePattern('standard');
 
-        confetti({
-          particleCount: 45,
-          spread: 70,
-          origin: { y: 0.7 }
-        });
-
         const records: ScanRecord[] = [];
         for (const res of results) {
           const parsed = parseBarcodeContent(res.text, res.format);
@@ -215,18 +208,16 @@
         fileInput?.click();
       }
     }}
-    class="relative rounded-3xl border-2 border-dashed p-8 sm:p-12 text-center transition-all cursor-pointer bg-gray-950/60 backdrop-blur-md flex flex-col items-center justify-center min-h-[300px] {isDragging
-      ? 'border-cyan-400 bg-cyan-950/20 shadow-[0_0_30px_rgba(6,182,212,0.2)]'
-      : 'border-gray-800 hover:border-gray-700 hover:bg-gray-900/40'}"
+    class="relative rounded-none border-2 border-dashed p-8 sm:p-12 text-center transition-all cursor-pointer bg-background flex flex-col items-center justify-center min-h-[300px] {isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40 hover:bg-[#FFF4ED]'}"
   >
     {#if isProcessing}
       <div class="flex flex-col items-center gap-3">
-        <div class="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-sm font-medium text-gray-300">Scanning image for barcodes & QR codes...</p>
+        <div class="w-10 h-10 border-4 border-primary border-t-transparent rounded-none animate-spin"></div>
+        <p class="text-sm font-medium text-muted-foreground">Scanning image for barcodes & QR codes...</p>
       </div>
     {:else if previewUrl}
       <div class="flex flex-col items-center gap-4 w-full">
-        <div class="relative max-h-60 max-w-full rounded-2xl overflow-hidden border border-gray-800 shadow-xl bg-black">
+        <div class="relative max-h-60 max-w-full rounded-none overflow-hidden border border-border shadow-xl bg-black">
           <img src={previewUrl} alt="Uploaded" class="max-h-60 object-contain mx-auto" />
         </div>
 
@@ -237,9 +228,9 @@
               e.stopPropagation();
               rotateAndRescan();
             }}
-            class="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+            class="px-3.5 py-2 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
           >
-            <RotateCw class="w-3.5 h-3.5 text-cyan-400" />
+            <RotateCw class="w-3.5 h-3.5 text-primary" />
             <span>Rotate 90° & Rescan</span>
           </button>
 
@@ -249,7 +240,7 @@
               e.stopPropagation();
               resetImage();
             }}
-            class="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+            class="px-3.5 py-2 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
           >
             <RefreshCw class="w-3.5 h-3.5" />
             <span>Upload Another</span>
@@ -257,16 +248,16 @@
         </div>
       </div>
     {:else}
-      <div class="p-4 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-4 shadow-lg shadow-cyan-500/5">
+      <div class="p-4 rounded-none bg-primary/10 text-primary border border-primary/20 mb-4 shadow-lg ">
         <Upload class="w-8 h-8" />
       </div>
-      <h3 class="text-base sm:text-lg font-bold text-white mb-1.5">Drop Image Here or Click to Browse</h3>
-      <p class="text-xs text-gray-400 max-w-sm mb-4 leading-relaxed">
-        Supports PNG, JPG, WEBP, GIF, SVG. You can also paste screenshots directly from your clipboard (<span class="font-mono text-cyan-300">Ctrl + V</span>).
+      <h3 class="text-base sm:text-lg font-bold text-foreground mb-1.5">Drop Image Here or Click to Browse</h3>
+      <p class="text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed">
+        Supports PNG, JPG, WEBP, GIF, SVG. You can also paste screenshots directly from your clipboard (<span class="font-mono text-primary">Ctrl + V</span>).
       </p>
 
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gray-900 border border-gray-800 text-xs text-gray-300">
-        <Clipboard class="w-3.5 h-3.5 text-cyan-400" />
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none bg-surface border border-border text-xs text-muted-foreground">
+        <Clipboard class="w-3.5 h-3.5 text-primary" />
         <span>Clipboard Paste Supported Anywhere</span>
       </div>
     {/if}
@@ -274,31 +265,31 @@
 
   <!-- Multi-Code Results List (if multiple found in 1 image) -->
   {#if detectedRecords.length > 1}
-    <div class="p-5 rounded-3xl bg-gray-900 border border-gray-800 space-y-3">
+    <div class="p-5 rounded-none bg-surface border border-border space-y-3">
       <div class="flex items-center justify-between">
-        <h4 class="text-sm font-bold text-white flex items-center gap-2">
-          <Layers class="w-4 h-4 text-cyan-400" />
+        <h4 class="text-sm font-bold text-foreground flex items-center gap-2">
+          <Layers class="w-4 h-4 text-primary" />
           <span>Found {detectedRecords.length} Barcodes in Image</span>
         </h4>
-        <span class="text-xs text-gray-400">Click any code to inspect</span>
+        <span class="text-xs text-muted-foreground">Click any code to inspect</span>
       </div>
 
       <div class="space-y-2">
-        {#each detectedRecords as rec, i}
+        {#each detectedRecords as rec (rec.id)}
           <button
             onclick={() => onScan(rec)}
-            class="w-full p-3.5 rounded-2xl bg-gray-950 hover:bg-gray-850 border border-gray-800 hover:border-gray-700 flex items-center justify-between gap-3 text-left transition-colors"
+            class="w-full p-3.5 rounded-none bg-background hover:bg-[#FFF4ED] border border-border hover:border-primary/30 flex items-center justify-between gap-3 text-left transition-colors"
           >
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">
-                <span class="font-semibold text-xs text-white">{rec.parsed.title}</span>
-                <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-gray-800 text-cyan-300 border border-gray-700">
+                <span class="font-semibold text-xs text-foreground">{rec.parsed.title}</span>
+                <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#F3F4F6] text-primary border border-border">
                   {rec.format}
                 </span>
               </div>
-              <div class="font-mono text-xs text-gray-400 truncate">{rec.rawText}</div>
+              <div class="font-mono text-xs text-muted-foreground truncate">{rec.rawText}</div>
             </div>
-            <ArrowRight class="w-4 h-4 text-gray-500 shrink-0" />
+            <ArrowRight class="w-4 h-4 text-muted shrink-0" />
           </button>
         {/each}
       </div>
@@ -307,10 +298,10 @@
 
   <!-- Error Feedback -->
   {#if scanError}
-    <div class="p-4 rounded-2xl bg-red-950/40 border border-red-800/60 text-red-200 text-xs flex items-start gap-3 animate-fade-in">
-      <AlertCircle class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+    <div class="p-4 rounded-none bg-status-error-bg border border-status-error/30 text-status-error text-xs flex items-start gap-3 animate-fade-in">
+      <AlertCircle class="w-5 h-5 text-status-error shrink-0 mt-0.5" />
       <div class="leading-relaxed">
-        <span class="font-bold block text-red-300 mb-0.5">Scan Unsuccessful</span>
+        <span class="font-bold block text-status-error mb-0.5">Scan Unsuccessful</span>
         {scanError}
       </div>
     </div>

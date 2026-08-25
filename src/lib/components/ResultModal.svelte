@@ -127,21 +127,21 @@
 
 {#if record}
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-    <div class="relative w-full max-w-lg bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl overflow-hidden text-gray-100 flex flex-col max-h-[90vh]">
+    <div class="relative w-full max-w-lg bg-surface border border-border rounded-none shadow-2xl overflow-hidden text-foreground flex flex-col max-h-[90vh]">
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-850">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-surface">
         <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <div class="p-2.5 rounded-none bg-primary/10 text-primary border border-primary/20">
             {#if record.parsed.category === 'wifi'}
               <Wifi class="w-5 h-5" />
             {:else if record.parsed.category === 'totp'}
-              <KeyRound class="w-5 h-5 text-emerald-400" />
+              <KeyRound class="w-5 h-5 text-status-online" />
             {:else if record.parsed.category === 'calendar'}
               <Calendar class="w-5 h-5 text-amber-400" />
             {:else if record.parsed.category === 'crypto'}
               <Coins class="w-5 h-5 text-amber-400" />
             {:else if record.parsed.category === 'isbn'}
-              <BookOpen class="w-5 h-5 text-indigo-400" />
+              <BookOpen class="w-5 h-5 text-primary" />
             {:else if record.parsed.category === 'url'}
               <ExternalLink class="w-5 h-5" />
             {:else if record.parsed.category === 'phone'}
@@ -161,13 +161,13 @@
             {/if}
           </div>
           <div>
-            <h3 class="font-bold text-base leading-tight text-white">{record.parsed.title}</h3>
+            <h3 class="font-bold text-base leading-tight text-foreground">{record.parsed.title}</h3>
             <div class="flex items-center gap-2 mt-1">
-              <span class="inline-block text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-gray-800 text-cyan-300 border border-gray-700">
+              <span class="inline-block text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-[#F3F4F6] text-primary border border-border">
                 {record.format.replace('_', '-')}
               </span>
               {#if record.parsed.checksum?.hasChecksum}
-                <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded {record.parsed.checksum.isValid ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-red-950 text-red-300 border border-red-800'}">
+                <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded {record.parsed.checksum.isValid ? 'bg-status-online-badge text-status-online border border-status-online/30' : 'bg-status-error-badge text-status-error border border-status-error/30'}">
                   {#if record.parsed.checksum.isValid}
                     <ShieldCheck class="w-3 h-3" />
                     <span>Checksum Valid</span>
@@ -183,7 +183,7 @@
 
         <button
           onclick={onClose}
-          class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          class="p-2 rounded-none text-muted-foreground hover:text-foreground hover:bg-[#F3F4F6] transition-colors"
           aria-label="Close modal"
         >
           <X class="w-5 h-5" />
@@ -194,19 +194,19 @@
       <div class="p-6 overflow-y-auto space-y-5">
         <!-- 1. 2FA / TOTP Authenticator Card -->
         {#if record.parsed.category === 'totp' && record.parsed.totp}
-          <div class="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-4">
-            <div class="text-xs uppercase tracking-wider font-semibold text-emerald-400">
+          <div class="p-5 rounded-none bg-status-online-bg border border-status-online/30 text-center space-y-4">
+            <div class="text-xs uppercase tracking-wider font-semibold text-status-online">
               Live Two-Factor Authentication Code
             </div>
 
             <!-- OTP Display & Timer -->
             <div class="flex items-center justify-center gap-4">
-              <div class="text-3xl sm:text-4xl font-mono font-bold tracking-widest text-white bg-gray-950 px-5 py-3 rounded-2xl border border-emerald-500/40 shadow-inner">
+              <div class="text-3xl sm:text-4xl font-mono font-bold tracking-widest text-foreground bg-background px-5 py-3 rounded-none border border-status-online/40 shadow-inner">
                 {totpCode}
               </div>
 
               <!-- 30s Countdown Ring -->
-              <div class="flex flex-col items-center justify-center w-12 h-12 rounded-full border-2 border-emerald-500/40 bg-gray-950 text-emerald-400 font-mono text-xs font-bold shadow">
+              <div class="flex flex-col items-center justify-center w-12 h-12 rounded-none border-2 border-status-online/40 bg-background text-status-online font-mono text-xs font-bold shadow">
                 <span>{totpSecondsLeft}s</span>
               </div>
             </div>
@@ -214,7 +214,7 @@
             <div class="flex items-center justify-center gap-2">
               <button
                 onclick={() => copyToClipboard(totpCode, 'totp')}
-                class="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow-lg shadow-emerald-600/30"
+                class="py-2 px-4 rounded-none bg-status-online hover:bg-status-online/90 text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow-lg "
               >
                 {#if totpCopied}
                   <Check class="w-3.5 h-3.5" />
@@ -229,29 +229,29 @@
 
         <!-- 2. Wi-Fi Card -->
         {:else if record.parsed.category === 'wifi' && record.parsed.wifi}
-          <div class="p-4 rounded-2xl bg-gray-800/80 border border-gray-700 space-y-3">
+          <div class="p-4 rounded-none bg-[#F3F4F6] border border-border space-y-3">
             <div class="flex justify-between items-center text-xs">
-              <span class="text-gray-400">Network Name (SSID):</span>
-              <span class="font-semibold text-white font-mono">{record.parsed.wifi.ssid}</span>
+              <span class="text-muted-foreground">Network Name (SSID):</span>
+              <span class="font-semibold text-foreground font-mono">{record.parsed.wifi.ssid}</span>
             </div>
             <div class="flex justify-between items-center text-xs">
-              <span class="text-gray-400">Security Encryption:</span>
-              <span class="px-2 py-0.5 rounded bg-gray-700 text-[11px] font-semibold text-cyan-300">
+              <span class="text-muted-foreground">Security Encryption:</span>
+              <span class="px-2 py-0.5 rounded bg-[#E5E5E5] text-[11px] font-semibold text-primary">
                 {record.parsed.wifi.encryption || 'None (Open)'}
               </span>
             </div>
             {#if record.parsed.wifi.password}
-              <div class="pt-2 border-t border-gray-700/60 flex items-center justify-between gap-2">
+              <div class="pt-2 border-t border-border flex items-center justify-between gap-2">
                 <div class="text-xs">
-                  <span class="text-gray-400 block text-[10px]">Password:</span>
-                  <span class="font-mono font-bold text-emerald-400">
+                  <span class="text-muted-foreground block text-[10px]">Password:</span>
+                  <span class="font-mono font-bold text-status-online">
                     {showPassword ? record.parsed.wifi.password : '••••••••••••'}
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
                     onclick={() => (showPassword = !showPassword)}
-                    class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    class="p-2 rounded-lg border border-border bg-background hover:bg-foreground/5 text-muted-foreground transition-colors"
                   >
                     {#if showPassword}
                       <EyeOff class="w-3.5 h-3.5" />
@@ -261,7 +261,7 @@
                   </button>
                   <button
                     onclick={() => copyToClipboard(record?.parsed?.wifi?.password || '', 'password')}
-                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow"
+                    class="px-3 py-1.5 rounded-lg bg-status-online hover:bg-status-online/90 text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow"
                   >
                     {#if passwordCopied}
                       <Check class="w-3.5 h-3.5" />
@@ -278,27 +278,27 @@
 
         <!-- 3. Calendar Event Card -->
         {:else if record.parsed.category === 'calendar' && record.parsed.calendar}
-          <div class="p-4 rounded-2xl bg-gray-800/80 border border-gray-700 space-y-2.5 text-xs">
+          <div class="p-4 rounded-none bg-[#F3F4F6] border border-border space-y-2.5 text-xs">
             <div class="flex justify-between">
-              <span class="text-gray-400">Event:</span>
-              <span class="font-bold text-white">{record.parsed.calendar.title}</span>
+              <span class="text-muted-foreground">Event:</span>
+              <span class="font-bold text-foreground">{record.parsed.calendar.title}</span>
             </div>
             {#if record.parsed.calendar.startTime}
               <div class="flex justify-between">
-                <span class="text-gray-400">Starts:</span>
-                <span class="text-cyan-300 font-mono">{record.parsed.calendar.startTime.toLocaleString()}</span>
+                <span class="text-muted-foreground">Starts:</span>
+                <span class="text-primary font-mono">{record.parsed.calendar.startTime.toLocaleString()}</span>
               </div>
             {/if}
             {#if record.parsed.calendar.location}
               <div class="flex justify-between">
-                <span class="text-gray-400">Location:</span>
-                <span class="text-gray-200">{record.parsed.calendar.location}</span>
+                <span class="text-muted-foreground">Location:</span>
+                <span class="text-foreground">{record.parsed.calendar.location}</span>
               </div>
             {/if}
             <div class="pt-2 flex gap-2">
               <button
                 onclick={() => downloadIcs(record?.parsed?.calendar?.rawIcs || record?.rawText || '', record?.parsed?.calendar?.title || 'event')}
-                class="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow"
+                class="w-full py-2 px-3 rounded-none bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow"
               >
                 <Download class="w-4 h-4" />
                 <span>Save Event (.ics)</span>
@@ -308,16 +308,16 @@
 
         <!-- 4. Crypto Address Card -->
         {:else if record.parsed.category === 'crypto' && record.parsed.crypto}
-          <div class="p-4 rounded-2xl bg-gray-800/80 border border-gray-700 space-y-3">
+          <div class="p-4 rounded-none bg-[#F3F4F6] border border-border space-y-3">
             <div class="flex items-center justify-between text-xs">
-              <span class="text-gray-400">Cryptocurrency:</span>
-              <span class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-bold border border-amber-800">
+              <span class="text-muted-foreground">Cryptocurrency:</span>
+              <span class="px-2 py-0.5 rounded bg-[#FFF4ED] text-primary font-bold border border-primary/30">
                 {record.parsed.crypto.currency}
               </span>
             </div>
             <div>
-              <div class="text-[10px] text-gray-400 mb-1">Wallet Address:</div>
-              <div class="p-2.5 rounded-xl bg-gray-950 font-mono text-xs text-amber-300 break-all select-all border border-gray-800">
+              <div class="text-[10px] text-muted-foreground mb-1">Wallet Address:</div>
+              <div class="p-2.5 rounded-none bg-background font-mono text-xs text-amber-300 break-all select-all border border-border">
                 {record.parsed.crypto.address}
               </div>
             </div>
@@ -326,7 +326,7 @@
                 href={record.parsed.crypto.explorerUrl}
                 target="_blank"
                 rel="noreferrer"
-                class="flex-1 py-2 px-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                class="flex-1 py-2 px-3 rounded-none border border-border bg-background hover:bg-foreground/5 text-foreground font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
               >
                 <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
                 <span>View on Explorer</span>
@@ -336,28 +336,28 @@
 
         <!-- 5. Product / ISBN Barcode Card -->
         {:else if record.parsed.category === 'product' || record.parsed.category === 'isbn'}
-          <div class="p-4 rounded-2xl bg-gray-800/80 border border-gray-700 space-y-3">
+          <div class="p-4 rounded-none bg-[#F3F4F6] border border-border space-y-3">
             <div class="text-center py-1">
-              <div class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
+              <div class="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
                 {record.parsed.category === 'isbn' ? 'Book ISBN Number' : 'Product Barcode Number'}
               </div>
-              <div class="text-2xl font-mono font-bold tracking-widest text-cyan-400 mt-0.5">{record.rawText}</div>
+              <div class="text-2xl font-mono font-bold tracking-widest text-primary mt-0.5">{record.rawText}</div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(record.rawText)}`}
                 target="_blank"
                 rel="noreferrer"
-                class="p-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-center text-gray-200 font-medium transition-colors flex items-center justify-center gap-1.5"
+                class="p-2.5 rounded-none border border-border bg-background hover:bg-foreground/5 text-center text-foreground font-medium transition-colors flex items-center justify-center gap-1.5"
               >
-                <ExternalLink class="w-3.5 h-3.5 text-cyan-400" />
+                <ExternalLink class="w-3.5 h-3.5 text-primary" />
                 <span>Google</span>
               </a>
               <a
                 href={`https://www.amazon.com/s?k=${encodeURIComponent(record.rawText)}`}
                 target="_blank"
                 rel="noreferrer"
-                class="p-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-center text-gray-200 font-medium transition-colors flex items-center justify-center gap-1.5"
+                class="p-2.5 rounded-none border border-border bg-background hover:bg-foreground/5 text-center text-foreground font-medium transition-colors flex items-center justify-center gap-1.5"
               >
                 <ShoppingBag class="w-3.5 h-3.5 text-amber-400" />
                 <span>Amazon</span>
@@ -367,9 +367,9 @@
                   href={`https://openlibrary.org/isbn/${encodeURIComponent(record.rawText)}`}
                   target="_blank"
                   rel="noreferrer"
-                  class="p-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-center text-gray-200 font-medium transition-colors flex items-center justify-center gap-1.5"
+                  class="p-2.5 rounded-none border border-border bg-background hover:bg-foreground/5 text-center text-foreground font-medium transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <BookOpen class="w-3.5 h-3.5 text-indigo-400" />
+                  <BookOpen class="w-3.5 h-3.5 text-primary" />
                   <span>Open Library</span>
                 </a>
               {:else}
@@ -377,9 +377,9 @@
                   href={`https://world.openfoodfacts.org/product/${encodeURIComponent(record.rawText)}`}
                   target="_blank"
                   rel="noreferrer"
-                  class="p-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-center text-gray-200 font-medium transition-colors flex items-center justify-center gap-1.5"
+                  class="p-2.5 rounded-none border border-border bg-background hover:bg-foreground/5 text-center text-foreground font-medium transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Sparkles class="w-3.5 h-3.5 text-emerald-400" />
+                  <Sparkles class="w-3.5 h-3.5 text-status-online" />
                   <span>Open Food Facts</span>
                 </a>
               {/if}
@@ -387,9 +387,9 @@
                 href={`https://www.upcitemdb.com/query?s=${encodeURIComponent(record.rawText)}&type=2`}
                 target="_blank"
                 rel="noreferrer"
-                class="p-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-center text-gray-200 font-medium transition-colors flex items-center justify-center gap-1.5"
+                class="p-2.5 rounded-none border border-border bg-background hover:bg-foreground/5 text-center text-foreground font-medium transition-colors flex items-center justify-center gap-1.5"
               >
-                <FileText class="w-3.5 h-3.5 text-cyan-400" />
+                <FileText class="w-3.5 h-3.5 text-primary" />
                 <span>UPCitemdb</span>
               </a>
             </div>
@@ -397,31 +397,31 @@
 
         <!-- 6. vCard Contact Card -->
         {:else if record.parsed.category === 'vcard' && record.parsed.vcard}
-          <div class="p-4 rounded-2xl bg-gray-800/80 border border-gray-700 space-y-2 text-xs">
+          <div class="p-4 rounded-none bg-[#F3F4F6] border border-border space-y-2 text-xs">
             {#if record.parsed.vcard.fullName}
               <div class="flex justify-between">
-                <span class="text-gray-400">Name:</span>
-                <span class="font-bold text-white">{record.parsed.vcard.fullName}</span>
+                <span class="text-muted-foreground">Name:</span>
+                <span class="font-bold text-foreground">{record.parsed.vcard.fullName}</span>
               </div>
             {/if}
             {#if record.parsed.vcard.organization}
               <div class="flex justify-between">
-                <span class="text-gray-400">Company:</span>
-                <span class="text-gray-200">{record.parsed.vcard.organization}</span>
+                <span class="text-muted-foreground">Company:</span>
+                <span class="text-foreground">{record.parsed.vcard.organization}</span>
               </div>
             {/if}
             {#if record.parsed.vcard.phone}
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Phone:</span>
-                <a href={`tel:${record.parsed.vcard.phone}`} class="text-cyan-400 hover:underline font-mono">
+                <span class="text-muted-foreground">Phone:</span>
+                <a href={`tel:${record.parsed.vcard.phone}`} class="text-primary hover:underline font-mono">
                   {record.parsed.vcard.phone}
                 </a>
               </div>
             {/if}
             {#if record.parsed.vcard.email}
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Email:</span>
-                <a href={`mailto:${record.parsed.vcard.email}`} class="text-cyan-400 hover:underline">
+                <span class="text-muted-foreground">Email:</span>
+                <a href={`mailto:${record.parsed.vcard.email}`} class="text-primary hover:underline">
                   {record.parsed.vcard.email}
                 </a>
               </div>
@@ -429,7 +429,7 @@
             <div class="pt-2">
               <button
                 onclick={() => downloadVCard(record?.rawText || '', record?.parsed?.vcard?.fullName || 'contact')}
-                class="w-full py-2 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow"
+                class="w-full py-2 px-3 rounded-none bg-primary hover:bg-primary/90 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow"
               >
                 <Download class="w-4 h-4" />
                 <span>Save Contact (.vcf)</span>
@@ -439,16 +439,16 @@
         {/if}
 
         <!-- Custom Notes Section -->
-        <div class="p-3.5 rounded-2xl bg-gray-950 border border-gray-800 space-y-2">
-          <div class="flex items-center justify-between text-xs text-gray-400 font-medium">
+        <div class="p-3.5 rounded-none bg-background border border-border space-y-2">
+          <div class="flex items-center justify-between text-xs text-muted-foreground font-medium">
             <span class="flex items-center gap-1.5">
-              <Edit3 class="w-3.5 h-3.5 text-cyan-400" />
+              <Edit3 class="w-3.5 h-3.5 text-primary" />
               <span>Notes & Tagging</span>
             </span>
             {#if !isEditingNotes}
               <button
                 onclick={() => (isEditingNotes = true)}
-                class="text-cyan-400 hover:underline text-[11px]"
+                class="text-primary hover:underline text-[11px]"
               >
                 {record.notes ? 'Edit' : '+ Add Note'}
               </button>
@@ -461,31 +461,31 @@
                 bind:value={itemNotes}
                 rows={2}
                 placeholder="Add custom notes, serial tags, or product details..."
-                class="w-full bg-gray-900 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50 resize-none"
+                class="w-full bg-surface border border-border rounded-none p-2.5 text-xs text-foreground focus:outline-none focus:border-primary/50 resize-none"
               ></textarea>
               <div class="flex justify-end gap-2 text-xs">
                 <button
                   onclick={() => (isEditingNotes = false)}
-                  class="px-2.5 py-1 rounded-lg bg-gray-800 text-gray-400 hover:text-white"
+                  class="px-2.5 py-1 rounded-lg bg-[#F3F4F6] text-muted-foreground hover:text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   onclick={saveNotes}
-                  class="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow"
+                  class="px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium shadow"
                 >
                   Save Note
                 </button>
               </div>
             </div>
           {:else if record.notes}
-            <p class="text-xs text-gray-300 italic">{record.notes}</p>
+            <p class="text-xs text-muted-foreground italic">{record.notes}</p>
           {/if}
         </div>
 
         <!-- Raw Text Box -->
         <div>
-          <div class="flex justify-between items-center mb-1.5 text-xs text-gray-400 font-medium">
+          <div class="flex justify-between items-center mb-1.5 text-xs text-muted-foreground font-medium">
             <span>Decoded Raw Payload:</span>
             <span>{record.rawText.length} chars</span>
           </div>
@@ -494,26 +494,26 @@
               readonly
               value={record.rawText}
               rows={Math.min(5, Math.max(2, record.rawText.split('\n').length))}
-              class="w-full p-3 rounded-2xl bg-gray-950 border border-gray-800 text-gray-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50 resize-none select-all"
+              class="w-full p-3 rounded-none bg-background border border-border text-muted-foreground font-mono text-xs focus:outline-none focus:border-primary/50 resize-none select-all"
             ></textarea>
           </div>
         </div>
 
         <!-- Scanned Metadata -->
-        <div class="flex items-center justify-between text-[11px] text-gray-500 border-t border-gray-800 pt-3">
+        <div class="flex items-center justify-between text-[11px] text-muted border-t border-border pt-3">
           <span>Scanned: {new Date(record.timestamp).toLocaleTimeString()}</span>
           <span>Date: {new Date(record.timestamp).toLocaleDateString()}</span>
         </div>
       </div>
 
       <!-- Action Footer -->
-      <div class="p-4 border-t border-gray-800 bg-gray-850 flex flex-wrap gap-2 justify-end">
+      <div class="p-4 border-t border-border bg-surface flex flex-wrap gap-2 justify-end">
         {#if record.parsed.url}
           <a
             href={record.parsed.url}
             target="_blank"
             rel="noreferrer"
-            class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs sm:text-sm flex items-center gap-2 transition-colors shadow"
+            class="px-4 py-2 rounded-none bg-primary hover:bg-primary/90 text-white font-medium text-xs sm:text-sm flex items-center gap-2 transition-colors shadow"
           >
             <ExternalLink class="w-4 h-4" />
             <span>Open Link</span>
@@ -528,22 +528,22 @@
                 onClose();
               }
             }}
-            class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium text-xs sm:text-sm flex items-center gap-2 border border-gray-700 transition-colors"
+            class="px-4 py-2 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 border border-border transition-colors"
           >
-            <QrCode class="w-4 h-4 text-cyan-400" />
+            <QrCode class="w-4 h-4 text-primary" />
             <span>Re-Generate Code</span>
           </button>
         {/if}
 
         <button
           onclick={() => copyToClipboard(record?.rawText || '')}
-          class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium text-xs sm:text-sm flex items-center gap-2 border border-gray-700 transition-colors"
+          class="px-4 py-2 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 border border-border transition-colors"
         >
           {#if copied}
-            <Check class="w-4 h-4 text-emerald-400" />
+            <Check class="w-4 h-4 text-status-online" />
             <span>Copied!</span>
           {:else}
-            <Copy class="w-4 h-4 text-gray-400" />
+            <Copy class="w-4 h-4 text-muted-foreground" />
             <span>Copy Text</span>
           {/if}
         </button>

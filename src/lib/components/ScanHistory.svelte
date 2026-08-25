@@ -138,15 +138,15 @@
   />
 
   <!-- Top Bar & Search -->
-  <div class="bg-gray-900/90 border border-gray-800 rounded-3xl p-5 shadow-xl space-y-4">
+  <div class="bg-surface border border-border rounded-none p-5 shadow-xl space-y-4">
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="relative w-full sm:w-80">
-        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
           bind:value={searchQuery}
           placeholder="Search items, barcodes, notes..."
-          class="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50"
+          class="w-full bg-background border border-border rounded-none pl-10 pr-4 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:border-primary/50"
         />
       </div>
 
@@ -154,44 +154,44 @@
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
         <button
           onclick={() => importInput?.click()}
-          class="py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+          class="py-2 px-3 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
           title="Import JSON Backup"
         >
-          <Upload class="w-3.5 h-3.5 text-cyan-400" />
+          <Upload class="w-3.5 h-3.5 text-primary" />
           <span class="hidden sm:inline">Import</span>
         </button>
 
         {#if records.length > 0}
           <button
             onclick={exportCSV}
-            class="py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+            class="py-2 px-3 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
             title="Export CSV"
           >
-            <FileSpreadsheet class="w-3.5 h-3.5 text-emerald-400" />
+            <FileSpreadsheet class="w-3.5 h-3.5 text-status-online" />
             <span class="hidden sm:inline">CSV</span>
           </button>
 
           <button
             onclick={exportExcel}
-            class="py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+            class="py-2 px-3 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
             title="Export Excel TSV"
           >
-            <FileSpreadsheet class="w-3.5 h-3.5 text-emerald-300" />
+            <FileSpreadsheet class="w-3.5 h-3.5 text-status-online" />
             <span class="hidden sm:inline">Excel</span>
           </button>
 
           <button
             onclick={printLabels}
-            class="py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition-colors flex items-center gap-1.5"
+            class="py-2 px-3 rounded-none bg-[#F3F4F6] hover:bg-[#E5E5E5] text-foreground text-xs font-medium border border-border transition-colors flex items-center gap-1.5"
             title="Print Barcode Label Sheet"
           >
-            <Printer class="w-3.5 h-3.5 text-indigo-400" />
+            <Printer class="w-3.5 h-3.5 text-primary" />
             <span class="hidden sm:inline">Print</span>
           </button>
 
           <button
             onclick={handleClearAll}
-            class="py-2 px-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 text-xs font-medium border border-red-800/40 transition-colors flex items-center gap-1.5"
+            class="py-2 px-3 rounded-none bg-status-error-bg hover:bg-status-error-badge text-status-error text-xs font-medium border border-status-error/30 transition-colors flex items-center gap-1.5"
             title="Clear all history"
           >
             <Trash2 class="w-3.5 h-3.5" />
@@ -202,16 +202,14 @@
     </div>
 
     <!-- Filters Row -->
-    <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-800/80 text-xs">
-      <span class="text-gray-500 flex items-center gap-1">
+    <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-border text-xs">
+      <span class="text-muted flex items-center gap-1">
         <Filter class="w-3 h-3" /> Filters:
       </span>
 
       <button
         onclick={() => (showFavoritesOnly = !showFavoritesOnly)}
-        class="px-3 py-1 rounded-lg border flex items-center gap-1.5 transition-all {showFavoritesOnly
-          ? 'bg-amber-950/40 border-amber-600 text-amber-300'
-          : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-white'}"
+        class="px-3 py-1 rounded-lg border flex items-center gap-1.5 transition-all {showFavoritesOnly ? 'bg-[#FFF4ED] border-primary text-primary' : 'bg-background border-border text-muted-foreground hover:text-foreground'}"
       >
         <Star class="w-3 h-3 {showFavoritesOnly ? 'fill-amber-400' : ''}" />
         <span>Favorites</span>
@@ -219,7 +217,7 @@
 
       <select
         bind:value={selectedCategory}
-        class="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-gray-300 text-xs focus:outline-none"
+        class="bg-background border border-border rounded-lg px-2.5 py-1 text-muted-foreground text-xs focus:outline-none"
       >
         <option value="ALL">All Categories</option>
         <option value="totp">2FA (TOTP)</option>
@@ -238,10 +236,10 @@
   <!-- History List Table / Cards -->
   <div class="space-y-2">
     {#if filteredRecords.length === 0}
-      <div class="p-12 text-center bg-gray-900/60 border border-gray-800 rounded-3xl">
-        <History class="w-10 h-10 text-gray-600 mx-auto mb-2 stroke-[1.5]" />
-        <p class="text-sm font-medium text-gray-400">No records found</p>
-        <p class="text-xs text-gray-500 mt-1">
+      <div class="p-12 text-center bg-surface border border-border rounded-none">
+        <History class="w-10 h-10 text-muted mx-auto mb-2 stroke-[1.5]" />
+        <p class="text-sm font-medium text-muted-foreground">No records found</p>
+        <p class="text-xs text-muted mt-1">
           {searchQuery ? 'Try adjusting your search query.' : 'Scanned barcodes will appear here automatically.'}
         </p>
       </div>
@@ -256,21 +254,21 @@
               onSelectRecord(item);
             }
           }}
-          class="p-4 rounded-2xl bg-gray-900/90 hover:bg-gray-850 border border-gray-800 hover:border-gray-700 transition-all cursor-pointer flex items-center justify-between gap-4 group shadow-sm"
+          class="p-4 rounded-none bg-surface hover:bg-[#FFF4ED] border border-border hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between gap-4 group shadow-sm"
         >
           <!-- Category Icon & Info -->
           <div class="flex items-center gap-3.5 min-w-0 flex-1">
-            <div class="p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-cyan-400 shrink-0">
+            <div class="p-2.5 rounded-none bg-background border border-border text-primary shrink-0">
               {#if item.parsed.category === 'wifi'}
                 <Wifi class="w-4 h-4" />
               {:else if item.parsed.category === 'totp'}
-                <KeyRound class="w-4 h-4 text-emerald-400" />
+                <KeyRound class="w-4 h-4 text-status-online" />
               {:else if item.parsed.category === 'calendar'}
                 <Calendar class="w-4 h-4 text-amber-400" />
               {:else if item.parsed.category === 'crypto'}
                 <Coins class="w-4 h-4 text-amber-400" />
               {:else if item.parsed.category === 'isbn'}
-                <BookOpen class="w-4 h-4 text-indigo-400" />
+                <BookOpen class="w-4 h-4 text-primary" />
               {:else if item.parsed.category === 'url'}
                 <ExternalLink class="w-4 h-4" />
               {:else if item.parsed.category === 'product'}
@@ -286,21 +284,21 @@
 
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">
-                <span class="font-bold text-white text-xs truncate">{item.parsed.title}</span>
-                <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-gray-800 text-cyan-300 border border-gray-700 shrink-0">
+                <span class="font-bold text-foreground text-xs truncate">{item.parsed.title}</span>
+                <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#F3F4F6] text-primary border border-border shrink-0">
                   {item.format.replace('_', '-')}
                 </span>
                 {#if (item.count || 1) > 1}
-                  <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 shrink-0">
+                  <span class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/30 shrink-0">
                     x{item.count}
                   </span>
                 {/if}
               </div>
-              <div class="font-mono text-xs text-gray-400 truncate max-w-lg">{item.rawText}</div>
+              <div class="font-mono text-xs text-muted-foreground truncate max-w-lg">{item.rawText}</div>
               {#if item.notes}
-                <div class="text-[11px] text-cyan-300/80 italic mt-0.5 truncate">Note: {item.notes}</div>
+                <div class="text-[11px] text-primary italic mt-0.5 truncate">Note: {item.notes}</div>
               {/if}
-              <div class="text-[10px] text-gray-500 mt-1">
+              <div class="text-[10px] text-muted mt-1">
                 {new Date(item.timestamp).toLocaleString()}
               </div>
             </div>
@@ -310,7 +308,7 @@
           <div class="flex items-center gap-1 shrink-0">
             <button
               onclick={(e) => handleToggleFavorite(item.id, e)}
-              class="p-2 rounded-xl text-gray-500 hover:text-amber-400 hover:bg-gray-800 transition-colors"
+              class="p-2 rounded-none text-muted hover:text-amber-400 hover:bg-[#F3F4F6] transition-colors"
               title="Favorite"
             >
               <Star class="w-4 h-4 {item.favorite ? 'fill-amber-400 text-amber-400' : ''}" />
@@ -318,11 +316,11 @@
 
             <button
               onclick={(e) => copyText(item.id, item.rawText, e)}
-              class="p-2 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+              class="p-2 rounded-none text-muted hover:text-foreground hover:bg-[#F3F4F6] transition-colors"
               title="Copy"
             >
               {#if copiedId === item.id}
-                <Check class="w-4 h-4 text-emerald-400" />
+                <Check class="w-4 h-4 text-status-online" />
               {:else}
                 <Copy class="w-4 h-4" />
               {/if}
@@ -330,7 +328,7 @@
 
             <button
               onclick={(e) => handleDelete(item.id, e)}
-              class="p-2 rounded-xl text-gray-500 hover:text-red-400 hover:bg-gray-800 transition-colors"
+              class="p-2 rounded-none text-muted hover:text-status-error hover:bg-[#F3F4F6] transition-colors"
               title="Delete"
             >
               <Trash2 class="w-4 h-4" />

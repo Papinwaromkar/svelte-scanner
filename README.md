@@ -1,4 +1,4 @@
-﻿# ScanCraft — 100% Client-Side Barcode & QR Code Engine
+# ScanCraft — 100% Client-Side Barcode & QR Code Engine
 
 A high-performance, privacy-first web application built with **Svelte 5**, **TypeScript**, **Tailwind CSS v4**, and **Vite**.
 
@@ -10,7 +10,7 @@ Runs **100% inside your browser** with **zero server dependencies** — video fe
 
 ### 1. 📷 Live Camera Scanner
 * **GPU & Hardware Acceleration**: Utilizes the browser native `BarcodeDetector` Web API when available (up to 60 FPS).
-* **Cross-Browser Fallbacks**: Integrated with `@zxing/library` and `jsQR` to guarantee 100% support on iOS Safari, Android, Chrome, Firefox, and Edge.
+* **Cross-Browser Fallbacks**: Falls back to `@zxing/library` when native `BarcodeDetector` is unavailable (iOS Safari, Firefox, etc.).
 * **Camera Hardware Controls**:
   * Flashlight / Torch toggle button.
   * Digital / Optical Zoom slider (hardware supported).
@@ -19,7 +19,6 @@ Runs **100% inside your browser** with **zero server dependencies** — video fe
 * **Instant Feedback**:
   * Synthesized zero-latency scan beeps using browser `AudioContext` (no audio files needed).
   * Haptic vibration feedback (`navigator.vibrate`).
-  * Confetti celebration on detection.
 
 ---
 
